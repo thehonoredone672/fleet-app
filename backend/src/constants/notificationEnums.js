@@ -1,0 +1,15 @@
+// Mirrors the Prisma NotificationType enum.
+const NOTIFICATION_TYPES = [
+  'TRIP_ASSIGNED',
+  'TRIP_UPDATED',
+  'MAINTENANCE_DUE',
+  'DOCUMENT_EXPIRY',
+  'LICENSE_EXPIRY',
+  'ALERT',
+  'EXPENSE_APPROVED',
+  'EXPENSE_REJECTED',
+  'ISSUE_REPORTED',
+  'GENERAL',
+];
+
+module.exports = { NOTIFICATION_TYPES };

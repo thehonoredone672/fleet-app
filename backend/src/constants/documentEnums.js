@@ -1,0 +1,14 @@
+// Mirrors the Prisma DocumentType enum.
+const DOCUMENT_TYPES = [
+  'REGISTRATION_CERTIFICATE',
+  'INSURANCE',
+  'POLLUTION_CERTIFICATE',
+  'PERMIT',
+  'FITNESS_CERTIFICATE',
+  'DRIVING_LICENSE',
+  'ID_PROOF',
+  'MEDICAL_CERTIFICATE',
+  'OTHER',
+];
+
+module.exports = { DOCUMENT_TYPES };

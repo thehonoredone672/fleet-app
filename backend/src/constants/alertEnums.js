@@ -1,0 +1,15 @@
+// Mirrors the Prisma Alert-related enums.
+const ALERT_TYPES = [
+  'VEHICLE_MAINTENANCE',
+  'DOCUMENT_EXPIRY',
+  'LICENSE_EXPIRY',
+  'FUEL_ANOMALY',
+  'SPEEDING',
+  'VEHICLE_OFFLINE',
+  'GEOFENCE_BREACH',
+  'TRIP_DELAY',
+  'UNUSUAL_ACTIVITY',
+];
+const ALERT_SEVERITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+
+module.exports = { ALERT_TYPES, ALERT_SEVERITIES };

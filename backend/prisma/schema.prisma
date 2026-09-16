@@ -1,0 +1,661 @@
+// Fleet Management Platform — Database Schema
+// See docs/database.md for the ER diagram and cascade-rule rationale.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  FLEET_ADMIN
+  FLEET_MANAGER
+  DRIVER
+  VIEWER
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum VehicleType {
+  TRUCK
+  VAN
+  CAR
+  BUS
+  MOTORCYCLE
+  TRAILER
+  OTHER
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  CNG
+  ELECTRIC
+  HYBRID
+  OTHER
+}
+
+enum VehicleStatus {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
+  RETIRED
+}
+
+enum DriverStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  ON_LEAVE
+}
+
+enum TripStatus {
+  SCHEDULED
+  ASSIGNED
+  STARTED
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum TripPurpose {
+  DELIVERY
+  PICKUP
+  PASSENGER_TRANSPORT
+  MAINTENANCE_RUN
+  OFFICIAL
+  OTHER
+}
+
+enum MaintenanceType {
+  ENGINE
+  OIL
+  TIRES
+  BRAKES
+  BATTERY
+  AC
+  ELECTRICAL
+  GENERAL_SERVICE
+  OTHER
+}
+
+enum MaintenanceStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ExpenseCategory {
+  FUEL
+  MAINTENANCE
+  TOLL
+  PARKING
+  REPAIR
+  INSURANCE
+  PERMIT
+  MISCELLANEOUS
+}
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DocumentType {
+  REGISTRATION_CERTIFICATE
+  INSURANCE
+  POLLUTION_CERTIFICATE
+  PERMIT
+  FITNESS_CERTIFICATE
+  DRIVING_LICENSE
+  ID_PROOF
+  MEDICAL_CERTIFICATE
+  OTHER
+}
+
+enum AlertType {
+  VEHICLE_MAINTENANCE
+  DOCUMENT_EXPIRY
+  LICENSE_EXPIRY
+  FUEL_ANOMALY
+  SPEEDING
+  VEHICLE_OFFLINE
+  GEOFENCE_BREACH
+  TRIP_DELAY
+  UNUSUAL_ACTIVITY
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NotificationType {
+  TRIP_ASSIGNED
+  TRIP_UPDATED
+  MAINTENANCE_DUE
+  DOCUMENT_EXPIRY
+  LICENSE_EXPIRY
+  ALERT
+  EXPENSE_APPROVED
+  EXPENSE_REJECTED
+  ISSUE_REPORTED
+  GENERAL
+}
+
+enum IssueType {
+  ENGINE
+  TIRE
+  BRAKE
+  ACCIDENT
+  FUEL
+  ELECTRICAL
+  OTHER
+}
+
+enum IssueSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IssueStatus {
+  OPEN
+  ACKNOWLEDGED
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum GeofenceEventType {
+  ENTERED
+  EXITED
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Core tenancy & identity
+// ─────────────────────────────────────────────────────────────────────────
+
+model Organization {
+  id               String           @id @default(cuid())
+  name             String
+  email            String           @unique
+  phone            String?
+  address          String?
+  logo             String?
+  subscriptionPlan SubscriptionPlan @default(FREE)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  users      User[]
+  vehicles   Vehicle[]
+  alerts     Alert[]
+  geofences  Geofence[]
+  trips      Trip[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  email          String   @unique
+  phone          String?
+  passwordHash   String
+  role           Role     @default(VIEWER)
+  profileImage   String?
+  isActive       Boolean  @default(true)
+  // Expo push token for the device currently signed in — single-device
+  // MVP scope, no multi-device fan-out yet (see docs/architecture.md).
+  pushToken      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  driver        Driver?
+  notifications Notification[]
+  refreshTokens RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  auditLogs     AuditLog[]     @relation("AuditLogActor")
+  approvedExpenses Expense[]   @relation("ExpenseApprover")
+  createdExpenses  Expense[]   @relation("ExpenseCreator")
+  resolvedAlerts   Alert[]     @relation("AlertResolver")
+  createdMaintenance Maintenance[] @relation("MaintenanceCreator")
+
+  @@index([organizationId])
+  @@map("users")
+}
+
+model RefreshToken {
+  id                String    @id @default(cuid())
+  userId            String
+  tokenHash         String    @unique
+  userAgent         String?
+  ipAddress         String?
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  replacedByTokenId String?
+  createdAt         DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Fleet: vehicles & drivers
+// ─────────────────────────────────────────────────────────────────────────
+
+model Vehicle {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  registrationNumber  String
+  vehicleType         VehicleType
+  make                String
+  model               String
+  year                Int
+  color               String?
+  fuelType            FuelType
+  capacity            Int?
+  currentMileage      Float         @default(0)
+  status              VehicleStatus @default(ACTIVE)
+  purchaseDate        DateTime?
+  insuranceExpiry     DateTime?
+  registrationExpiry  DateTime?
+  pollutionExpiry     DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  assignments  VehicleAssignment[]
+  trips        Trip[]
+  locations    Location[]
+  maintenance  Maintenance[]
+  fuelRecords  FuelRecord[]
+  expenses     Expense[]
+  documents    Document[]
+  alerts       Alert[]
+  issueReports IssueReport[]
+  geofenceEvents GeofenceEvent[]
+
+  @@unique([organizationId, registrationNumber])
+  @@index([organizationId, status])
+  @@map("vehicles")
+}
+
+model Driver {
+  id              String       @id @default(cuid())
+  userId          String       @unique
+  organizationId  String
+  licenseNumber   String
+  licenseType     String
+  licenseExpiry   DateTime
+  emergencyContact String?
+  joiningDate     DateTime?
+  status          DriverStatus @default(ACTIVE)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  assignments  VehicleAssignment[]
+  trips        Trip[]
+  locations    Location[]
+  fuelRecords  FuelRecord[]
+  documents    Document[]
+  alerts       Alert[]
+  issueReports IssueReport[]
+
+  @@unique([organizationId, licenseNumber])
+  @@index([organizationId, status])
+  @@map("drivers")
+}
+
+// VehicleAssignment enforces "one active driver per vehicle, one active
+// vehicle per driver" (see docs/database.md#business-rules). Prisma's DSL
+// has no partial-index syntax, so the two partial unique indexes below are
+// added via raw SQL in a follow-up migration — see
+// prisma/migrations/<ts>_partial_unique_assignments/migration.sql.
+model VehicleAssignment {
+  id           String    @id @default(cuid())
+  vehicleId    String
+  driverId     String
+  assignedAt   DateTime  @default(now())
+  unassignedAt DateTime?
+  isActive     Boolean   @default(true)
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  driver  Driver  @relation(fields: [driverId], references: [id], onDelete: Restrict)
+
+  @@index([vehicleId, isActive])
+  @@index([driverId, isActive])
+  @@map("vehicle_assignments")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Trips & tracking
+// ─────────────────────────────────────────────────────────────────────────
+
+model Trip {
+  id             String      @id @default(cuid())
+  organizationId String
+  vehicleId      String
+  driverId       String
+  source         String
+  sourceLat      Float?
+  sourceLng      Float?
+  destination    String
+  destLat        Float?
+  destLng        Float?
+  scheduledAt    DateTime?
+  startTime      DateTime?
+  endTime        DateTime?
+  distance       Float?
+  startOdometer  Float?
+  endOdometer    Float?
+  status         TripStatus  @default(SCHEDULED)
+  purpose        TripPurpose @default(OTHER)
+  notes          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  driver       Driver       @relation(fields: [driverId], references: [id], onDelete: Restrict)
+
+  locations    Location[]
+  issueReports IssueReport[]
+
+  @@index([organizationId, status])
+  @@index([vehicleId])
+  @@index([driverId])
+  @@map("trips")
+}
+
+// High-volume telemetry table. See docs/gps-tracking.md for retention /
+// rollup strategy — this is the table expected to need partitioning first
+// as fleet size grows (§46 of the product brief).
+model Location {
+  id        String   @id @default(cuid())
+  vehicleId String
+  driverId  String?
+  tripId    String?
+  clientId  String?  @unique // client-generated UUID, dedupes retried/offline-synced points
+  latitude  Float
+  longitude Float
+  speed     Float?
+  heading   Float?
+  accuracy  Float?
+  timestamp DateTime
+  createdAt DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driver  Driver? @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  trip    Trip?   @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId, timestamp(sort: Desc)])
+  @@index([tripId])
+  @@map("locations")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Maintenance, fuel, expenses, documents
+// ─────────────────────────────────────────────────────────────────────────
+
+model Maintenance {
+  id                String             @id @default(cuid())
+  vehicleId         String
+  type              MaintenanceType
+  description       String
+  serviceDate       DateTime?
+  nextServiceDate   DateTime?
+  nextServiceMileage Float?
+  mileage           Float?
+  cost              Float?
+  status            MaintenanceStatus @default(SCHEDULED)
+  notes             String?
+  createdById       String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  createdBy User?   @relation("MaintenanceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId, status])
+  @@index([nextServiceDate])
+  @@map("maintenance_records")
+}
+
+model FuelRecord {
+  id            String   @id @default(cuid())
+  vehicleId     String
+  driverId      String?
+  fuelType      FuelType
+  quantity      Float
+  pricePerLiter Float
+  totalCost     Float
+  odometer      Float
+  station       String?
+  receiptUrl    String?
+  date          DateTime @default(now())
+  // Client-generated dedup key for the mobile offline sync queue (§19,
+  // Phase 19) — same pattern as Location.clientId: a retried/replayed
+  // submission after a lost response is detected instead of creating a
+  // duplicate record.
+  clientId      String?  @unique
+  createdAt     DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  driver  Driver? @relation(fields: [driverId], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId, date])
+  @@map("fuel_records")
+}
+
+model Expense {
+  id             String          @id @default(cuid())
+  vehicleId      String
+  category       ExpenseCategory
+  amount         Float
+  description    String?
+  date           DateTime        @default(now())
+  receiptUrl     String?
+  status         ExpenseStatus   @default(PENDING)
+  createdById    String
+  approvedById   String?
+  approvedAt     DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  vehicle    Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  createdBy  User    @relation("ExpenseCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy User?   @relation("ExpenseApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId, status])
+  @@map("expenses")
+}
+
+// A Document belongs to a vehicle OR a driver (never neither/both) —
+// enforced in the service layer since Prisma has no portable CHECK
+// constraint syntax; see docs/database.md#document-ownership.
+model Document {
+  id             String       @id @default(cuid())
+  vehicleId      String?
+  driverId       String?
+  type           DocumentType
+  documentNumber String?
+  issueDate      DateTime?
+  expiryDate     DateTime?
+  fileUrl        String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driver  Driver?  @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([expiryDate])
+  @@map("documents")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Alerts, notifications, geofencing, issue reports
+// ─────────────────────────────────────────────────────────────────────────
+
+model Alert {
+  id             String        @id @default(cuid())
+  organizationId String
+  vehicleId      String?
+  driverId       String?
+  type           AlertType
+  severity       AlertSeverity @default(MEDIUM)
+  message        String
+  isResolved     Boolean       @default(false)
+  resolvedById   String?
+  resolvedAt     DateTime?
+  createdAt      DateTime      @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driver       Driver?      @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  resolvedBy   User?        @relation("AlertResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, isResolved])
+  @@index([vehicleId])
+  @@map("alerts")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType @default(GENERAL)
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model Geofence {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  latitude       Float
+  longitude      Float
+  radiusMeters   Float
+  isActive       Boolean  @default(true)
+  // §19: "Notify managers when configured" — an escape hatch for
+  // high-traffic zones (e.g. the home warehouse) where every entry/exit
+  // would otherwise flood the alerts list. Defaults on so notifications
+  // work out of the box for the common case (a customer site, a
+  // restricted zone).
+  notifyOnEvent  Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events       GeofenceEvent[]
+
+  @@index([organizationId])
+  @@map("geofences")
+}
+
+model GeofenceEvent {
+  id         String            @id @default(cuid())
+  geofenceId String
+  vehicleId  String
+  type       GeofenceEventType
+  occurredAt DateTime          @default(now())
+
+  geofence Geofence @relation(fields: [geofenceId], references: [id], onDelete: Cascade)
+  vehicle  Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([geofenceId])
+  @@index([vehicleId])
+  @@map("geofence_events")
+}
+
+model IssueReport {
+  id          String        @id @default(cuid())
+  tripId      String?
+  vehicleId   String
+  driverId    String
+  type        IssueType
+  description String
+  severity    IssueSeverity @default(MEDIUM)
+  photoUrls   String[]      @default([])
+  latitude    Float?
+  longitude   Float?
+  status      IssueStatus   @default(OPEN)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  trip    Trip?   @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  driver  Driver  @relation(fields: [driverId], references: [id], onDelete: Restrict)
+
+  @@index([vehicleId, status])
+  @@index([driverId])
+  @@map("issue_reports")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Audit log
+// ─────────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User? @relation("AuditLogActor", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@map("audit_logs")
+}
