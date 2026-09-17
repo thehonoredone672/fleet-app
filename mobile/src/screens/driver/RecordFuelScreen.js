@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Alert } from 'react-native';
+import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as vehicleService from '../../services/vehicleService';
@@ -22,13 +22,16 @@ export default function RecordFuelScreen() {
   const [station, setStation] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [saved, setSaved] = useState(false);
 
   const handleSubmit = async () => {
     if (!quantity || !pricePerLiter || !odometer) {
+      setSaved(false);
       setError('Quantity, price per liter, and odometer are required.');
       return;
     }
     setError(null);
+    setSaved(false);
     setSubmitting(true);
 
     try {
@@ -45,7 +48,7 @@ export default function RecordFuelScreen() {
       setPricePerLiter('');
       setOdometer('');
       setStation('');
-      Alert.alert('Saved', 'Fuel record saved. It will sync automatically if you are offline.');
+      setSaved(true);
     } finally {
       setSubmitting(false);
     }
@@ -67,35 +70,43 @@ export default function RecordFuelScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <ScreenHeader title="Add Fuel" meta={vehicle.registrationNumber} />
-      <ScrollView contentContainerStyle={styles.content}>
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {error ? (
+            <View style={styles.errorBox} accessibilityRole="alert">
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          {saved ? (
+            <View style={styles.successBox} accessibilityRole="alert">
+              <Text style={styles.successText}>Saved. It will sync automatically if you are offline.</Text>
+            </View>
+          ) : null}
+
+          <Text style={typography.label}>Fuel Type</Text>
+          <View style={styles.chipRow}>
+            {FUEL_TYPES.map((t) => (
+              <Pressable
+                key={t}
+                onPress={() => setFuelType(t)}
+                style={[styles.chip, fuelType === t && styles.chipActive]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: fuelType === t }}
+              >
+                <Text style={[styles.chipText, fuelType === t && styles.chipTextActive]}>{t}</Text>
+              </Pressable>
+            ))}
           </View>
-        ) : null}
 
-        <Text style={typography.label}>Fuel Type</Text>
-        <View style={styles.chipRow}>
-          {FUEL_TYPES.map((t) => (
-            <Pressable
-              key={t}
-              onPress={() => setFuelType(t)}
-              style={[styles.chip, fuelType === t && styles.chipActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: fuelType === t }}
-            >
-              <Text style={[styles.chipText, fuelType === t && styles.chipTextActive]}>{t}</Text>
-            </Pressable>
-          ))}
-        </View>
+          <Field label="Quantity (L)" value={quantity} onChangeText={setQuantity} />
+          <Field label="Price per Liter" value={pricePerLiter} onChangeText={setPricePerLiter} />
+          <Field label="Odometer" value={odometer} onChangeText={setOdometer} />
+          <Field label="Station (optional)" value={station} onChangeText={setStation} keyboardType="default" />
 
-        <Field label="Quantity (L)" value={quantity} onChangeText={setQuantity} />
-        <Field label="Price per Liter" value={pricePerLiter} onChangeText={setPricePerLiter} />
-        <Field label="Odometer" value={odometer} onChangeText={setOdometer} />
-        <Field label="Station (optional)" value={station} onChangeText={setStation} keyboardType="default" />
-
-        <PrimaryButton title="Save" onPress={handleSubmit} loading={submitting} />
-      </ScrollView>
+          <PrimaryButton title="Save" onPress={handleSubmit} loading={submitting} />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -118,6 +129,7 @@ function Field({ label, value, onChangeText, keyboardType = 'decimal-pad' }) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
+  flex: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
   content: { padding: spacing.lg, gap: spacing.md },
   field: { gap: spacing.xs },
@@ -142,4 +154,6 @@ const styles = StyleSheet.create({
   chipTextActive: { color: colors.inverse },
   errorBox: { borderWidth: borderWidth.thick, borderColor: colors.ink, padding: spacing.sm },
   errorText: { color: colors.ink, fontWeight: '700' },
+  successBox: { backgroundColor: colors.ink, padding: spacing.sm },
+  successText: { color: colors.inverse, fontWeight: '700' },
 });

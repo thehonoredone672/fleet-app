@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -70,6 +70,12 @@ export default function DriverHomeScreen() {
   };
 
   const isLoading = vehicleQuery.isLoading || tripsQuery.isLoading;
+  const isRefetching = vehicleQuery.isRefetching || tripsQuery.isRefetching || fuelQuery.isRefetching;
+  const refetchAll = () => {
+    vehicleQuery.refetch();
+    tripsQuery.refetch();
+    fuelQuery.refetch();
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -80,7 +86,12 @@ export default function DriverHomeScreen() {
           <ActivityIndicator size="large" color={colors.ink} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={refetchAll} tintColor={colors.ink} colors={[colors.ink]} />
+          }
+        >
           <PendingSyncBadge />
 
           <View style={styles.card}>

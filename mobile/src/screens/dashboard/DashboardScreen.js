@@ -1,4 +1,4 @@
-import { ScrollView, View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import * as dashboardService from '../../services/dashboardService';
@@ -10,7 +10,7 @@ import { colors, spacing, typography } from '../../constants/theme';
 const round1 = (n) => (n == null ? '—' : Math.round(n * 10) / 10);
 
 export default function DashboardScreen() {
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ['dashboard-kpis'],
     queryFn: dashboardService.getKpis,
     refetchInterval: 60000,
@@ -29,7 +29,12 @@ export default function DashboardScreen() {
           <EmptyState title="Couldn't load the dashboard" actionLabel="Retry" onAction={refetch} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.ink} colors={[colors.ink]} />
+          }
+        >
           <Text style={typography.subtitle}>Fleet</Text>
           <View style={styles.grid}>
             <StatTile label="Total Vehicles" value={data.fleet.totalVehicles} />
