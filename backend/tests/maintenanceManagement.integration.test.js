@@ -16,6 +16,10 @@ describe('maintenance management (requires a live database)', () => {
 
   afterAll(async () => {
     await prisma.maintenance.deleteMany({ where: { vehicleId } });
+    // The "vehicle under maintenance cannot start a trip" test creates a
+    // Trip against this vehicle — Trip.vehicleId is Restrict-on-delete
+    // (see docs/database.md), so it has to go before the vehicle can.
+    await prisma.trip.deleteMany({ where: { vehicleId } });
     await prisma.vehicle.deleteMany({ where: { id: vehicleId } });
     await prisma.user.deleteMany({ where: { email: { in: [adminEmail, otherOrgAdminEmail] } } });
     await prisma.$disconnect();

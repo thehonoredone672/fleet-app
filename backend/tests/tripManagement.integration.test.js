@@ -27,7 +27,9 @@ describe('trip management (requires a live database)', () => {
       .post('/api/v1/vehicles')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        registrationNumber: `TRIP-${Date.now()}-${suffix}`,
+        // registrationNumber has a 20-char max (vehicleValidators.js) —
+        // keep the prefix+suffix short around the 13-digit timestamp.
+        registrationNumber: `TR-${Date.now()}-${suffix}`,
         vehicleType: 'VAN',
         make: 'Ford',
         model: 'Transit',
@@ -57,14 +59,14 @@ describe('trip management (requires a live database)', () => {
       .send({ organizationName: 'Trip Org', name: 'Trip Admin', email: adminEmail, password });
     adminToken = admin.body.data.accessToken;
 
-    vehicleId = await createVehicle('main');
+    vehicleId = await createVehicle('M');
     driverId = await createDriver('main');
     const driverRecord = await prisma.driver.findUnique({ where: { id: driverId } });
     driverUserId = driverRecord.userId;
     const driverUser = await prisma.user.findUnique({ where: { id: driverUserId } });
     driverToken = (await tokenService.issueTokenPair(driverUser)).accessToken;
 
-    retiredVehicleId = await createVehicle('retired');
+    retiredVehicleId = await createVehicle('R');
     await request(app).delete(`/api/v1/vehicles/${retiredVehicleId}`).set('Authorization', `Bearer ${adminToken}`);
 
     expiredLicenseDriverId = await createDriver('expired', '2000-01-01');

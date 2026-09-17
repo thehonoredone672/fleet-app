@@ -165,8 +165,11 @@ describe('fuel management (requires a live database)', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.totalDistance).toBe(500);
-    expect(res.body.data.totalQuantity).toBe(85);
-    expect(res.body.data.efficiencyKmPerLiter).toBeCloseTo(500 / 85, 2);
-    expect(res.body.data.costPerKm).toBeCloseTo(127.5 / 500, 2);
+    // 45L (first record) + 5L (the idempotency-replay test's record,
+    // counted once) + 40L (the flagged large refill) = 90L / 135 cost —
+    // not 85L/127.5 as it was before the clientId replay test was added.
+    expect(res.body.data.totalQuantity).toBe(90);
+    expect(res.body.data.efficiencyKmPerLiter).toBeCloseTo(500 / 90, 2);
+    expect(res.body.data.costPerKm).toBeCloseTo(135 / 500, 2);
   });
 });

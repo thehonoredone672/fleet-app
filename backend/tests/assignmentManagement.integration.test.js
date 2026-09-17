@@ -34,6 +34,9 @@ describe('vehicle-driver assignment (requires a live database)', () => {
       .post('/api/v1/vehicles')
       .set('Authorization', `Bearer ${token}`)
       .send({
+        // registrationNumber has a 20-char max (vehicleValidators.js) —
+        // `suffix` must stay short (a 13-digit timestamp already eats
+        // most of the budget: "ASN-" + 13 digits + "-" = 18 fixed chars).
         registrationNumber: `ASN-${Date.now()}-${suffix}`,
         vehicleType: 'VAN',
         make: 'Ford',
@@ -76,7 +79,7 @@ describe('vehicle-driver assignment (requires a live database)', () => {
     otherOrgVehicleId = await createVehicle(otherOrgAdminToken, 'X');
     otherOrgDriverId = await createDriver(otherOrgAdminToken, 'X');
 
-    retiredVehicleId = await createVehicle(adminToken, 'RETIRED');
+    retiredVehicleId = await createVehicle(adminToken, 'R');
     await request(app).delete(`/api/v1/vehicles/${retiredVehicleId}`).set('Authorization', `Bearer ${adminToken}`);
 
     onLeaveDriverId = await createDriver(adminToken, 'LEAVE');
