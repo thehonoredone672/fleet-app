@@ -64,12 +64,11 @@ jobs:
 
       - run: npm ci
 
-      # No committed migration history yet (see docs/deployment.md) — for
-      # this throwaway CI database, `db push` syncs the schema directly
-      # from schema.prisma, which is the correct tool for an ephemeral
-      # test database (as opposed to `migrate deploy`, which is for a
-      # real deployment with a real migration history).
+      # `migrate deploy` applies the committed migration history
+      # (prisma/migrations/) — the same command render.yaml's startCommand
+      # runs against the real deployment database, so this also verifies
+      # the migration SQL is valid before it ever reaches Neon/Render.
       - run: npx prisma generate
-      - run: npx prisma db push
+      - run: npx prisma migrate deploy
 
       - run: npm test

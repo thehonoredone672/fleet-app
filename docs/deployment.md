@@ -52,9 +52,19 @@ npx expo start
 ```
 Scan the QR code with the **Expo Go** app (iOS/Android) on your phone — same Wi-Fi network isn't required this time, since the backend has a real public URL (unlike local dev, where the device needs your machine's LAN IP).
 
+## Alternative: Docker
+
+`backend/Dockerfile` builds a production image (multi-stage, non-root user, `prisma migrate deploy` on boot) for any container host (Fly.io, Railway, a VPS, etc.) instead of Render's native Node runtime:
+
+```bash
+cd backend
+docker build -t fleet-api .
+docker run -p 3000:3000 --env-file .env fleet-api
+```
+
 ## Beyond this (not done here)
 
 - `CORS_ORIGIN` is set to `*` for simplicity — tighten it to your actual mobile app's origin before this is anything but a personal test deploy.
 - No custom domain, no managed Redis, no CDN in front of the API.
-- No CI/CD — deploys happen on push to `main` via Render's GitHub integration default, with no test gate in between.
+- Test gate exists (`.github/workflows/backend-tests.yml` runs the full suite, including `prisma migrate deploy`, against an ephemeral Postgres on every push) but isn't wired to block a Render deploy — deploys still happen on push to `main` via Render's own GitHub integration, independent of whether CI passed.
 - An installable app file (EAS Build) or app-store distribution are separate, larger efforts — see `mobile/eas.json` for the build-profile scaffold already in place.
