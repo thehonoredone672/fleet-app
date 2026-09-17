@@ -12,7 +12,7 @@ const tokenService = require('../src/services/tokenService');
 // once the partial-unique-index migration from docs/database.md has been
 // applied (this suite exercises the app-level guard, not the DB
 // constraint, but both should hold).
-describe.skip('vehicle-driver assignment (requires a live database)', () => {
+describe('vehicle-driver assignment (requires a live database)', () => {
   const adminEmail = `asn-admin-${Date.now()}@example.com`;
   const otherOrgAdminEmail = `asn-other-${Date.now()}@example.com`;
   const password = 'Passw0rd1';

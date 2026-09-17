@@ -7,7 +7,7 @@ const tokenService = require('../src/services/tokenService');
 // (§19/§48). Requires a real database — same setup as
 // tests/authFlow.integration.test.js. Change `describe.skip` to
 // `describe` once DATABASE_URL points at a live Postgres instance.
-describe.skip('geofence management (requires a live database)', () => {
+describe('geofence management (requires a live database)', () => {
   const adminEmail = `geo-admin-${Date.now()}@example.com`;
   const otherOrgAdminEmail = `geo-other-${Date.now()}@example.com`;
   const password = 'Passw0rd1';

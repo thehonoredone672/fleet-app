@@ -13,7 +13,7 @@ const prisma = require('../src/config/database');
 //
 // This is real, runnable test code — not a placeholder — it's just gated
 // on infrastructure this environment doesn't have.
-describe.skip('auth flow (requires a live database)', () => {
+describe('auth flow (requires a live database)', () => {
   const email = `test-${Date.now()}@example.com`;
   const password = 'Passw0rd1';
   let refreshToken;

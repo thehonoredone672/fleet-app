@@ -9,7 +9,7 @@ const tokenService = require('../src/services/tokenService');
 // just "the endpoint responds." Requires a real database — same setup as
 // tests/authFlow.integration.test.js. Change `describe.skip` to
 // `describe` once DATABASE_URL points at a live Postgres instance.
-describe.skip('reports and dashboard (requires a live database)', () => {
+describe('reports and dashboard (requires a live database)', () => {
   const adminEmail = `report-admin-${Date.now()}@example.com`;
   const password = 'Passw0rd1';
   const dateFrom = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();

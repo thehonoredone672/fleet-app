@@ -7,7 +7,7 @@ const prisma = require('../src/config/database');
 // database — same setup as tests/authFlow.integration.test.js. Change
 // `describe.skip` to `describe` once DATABASE_URL points at a live
 // Postgres instance.
-describe.skip('maintenance management (requires a live database)', () => {
+describe('maintenance management (requires a live database)', () => {
   const adminEmail = `maint-admin-${Date.now()}@example.com`;
   const otherOrgAdminEmail = `maint-other-${Date.now()}@example.com`;
   const password = 'Passw0rd1';

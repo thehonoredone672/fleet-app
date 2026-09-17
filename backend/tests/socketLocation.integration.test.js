@@ -12,7 +12,7 @@ const tokenService = require('../src/services/tokenService');
 // app). Requires a real database — same setup as
 // tests/authFlow.integration.test.js. Change `describe.skip` to
 // `describe` once DATABASE_URL points at a live Postgres instance.
-describe.skip('Socket.IO GPS tracking (requires a live database)', () => {
+describe('Socket.IO GPS tracking (requires a live database)', () => {
   const adminEmail = `socket-admin-${Date.now()}@example.com`;
   const password = 'Passw0rd1';
 

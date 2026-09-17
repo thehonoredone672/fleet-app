@@ -11,7 +11,7 @@ const tokenService = require('../src/services/tokenService');
 // real database — same setup as tests/authFlow.integration.test.js.
 // Change `describe.skip` to `describe` once DATABASE_URL points at a
 // live Postgres instance.
-describe.skip('document management (requires a live database)', () => {
+describe('document management (requires a live database)', () => {
   const adminEmail = `doc-admin-${Date.now()}@example.com`;
   const otherOrgAdminEmail = `doc-other-${Date.now()}@example.com`;
   const password = 'Passw0rd1';

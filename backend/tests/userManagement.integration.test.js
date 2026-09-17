@@ -5,9 +5,10 @@ const tokenService = require('../src/services/tokenService');
 
 // RBAC + organization-scoping behavior for /api/v1/users. Requires a real
 // database — same setup steps as tests/authFlow.integration.test.js.
-// Change `describe.skip` to `describe` once DATABASE_URL points at a live
-// Postgres instance.
-describe.skip('user management (requires a live database)', () => {
+// Runs automatically in CI against an ephemeral Postgres service
+// container (see .github/workflows/backend-tests.yml) — set DATABASE_URL
+// locally to run it here too.
+describe('user management (requires a live database)', () => {
   const orgAEmail = `org-a-admin-${Date.now()}@example.com`;
   const orgBEmail = `org-b-admin-${Date.now()}@example.com`;
   const password = 'Passw0rd1';

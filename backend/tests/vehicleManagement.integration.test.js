@@ -6,7 +6,7 @@ const tokenService = require('../src/services/tokenService');
 // Vehicle CRUD, org-scoping, and RBAC. Requires a real database — same
 // setup as tests/authFlow.integration.test.js. Change `describe.skip` to
 // `describe` once DATABASE_URL points at a live Postgres instance.
-describe.skip('vehicle management (requires a live database)', () => {
+describe('vehicle management (requires a live database)', () => {
   const orgAEmail = `veh-org-a-${Date.now()}@example.com`;
   const orgBEmail = `veh-org-b-${Date.now()}@example.com`;
   const password = 'Passw0rd1';

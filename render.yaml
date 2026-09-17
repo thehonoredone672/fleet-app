@@ -1,0 +1,32 @@
+services:
+  - name: fleet-management-api
+    type: web
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate
+    # `prisma migrate deploy` only applies migrations that already exist
+    # in prisma/migrations (committed to the repo) — it never invents a
+    # schema from scratch. See docs/deployment.md.
+    startCommand: npx prisma migrate deploy && node src/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: REDIS_URL
+        sync: false
+      - key: STORAGE_PROVIDER
+        value: cloudinary
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false

@@ -9,7 +9,7 @@ const pushService = require('../src/services/pushService');
 // Requires a real database — same setup as
 // tests/authFlow.integration.test.js. Change `describe.skip` to
 // `describe` once DATABASE_URL points at a live Postgres instance.
-describe.skip('notification management (requires a live database)', () => {
+describe('notification management (requires a live database)', () => {
   const adminEmail = `notif-admin-${Date.now()}@example.com`;
   const password = 'Passw0rd1';
 

@@ -7,7 +7,7 @@ const tokenService = require('../src/services/tokenService');
 // and the deactivate-locks-out-login behavior. Requires a real database —
 // same setup as tests/authFlow.integration.test.js. Change `describe.skip`
 // to `describe` once DATABASE_URL points at a live Postgres instance.
-describe.skip('driver management (requires a live database)', () => {
+describe('driver management (requires a live database)', () => {
   const orgAEmail = `drv-org-a-${Date.now()}@example.com`;
   const orgBEmail = `drv-org-b-${Date.now()}@example.com`;
   const driverEmail = `drv-${Date.now()}@example.com`;

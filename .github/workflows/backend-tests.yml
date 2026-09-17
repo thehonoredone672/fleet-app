@@ -1,0 +1,67 @@
+name: backend-tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-tests.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-tests.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    # An ephemeral Postgres for this CI run only — separate from (and
+    # never touching) whatever database is used for an actual deployment.
+    # This is what finally lets the integration test suite run for real:
+    # every test file has been `describe(...)` (not `.skip`) since
+    # Phase 20, but this sandbox never had a reachable Postgres to run
+    # them against locally.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fleet_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fleet_test
+      JWT_SECRET: ci-test-access-secret
+      JWT_REFRESH_SECRET: ci-test-refresh-secret
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      # No committed migration history yet (see docs/deployment.md) — for
+      # this throwaway CI database, `db push` syncs the schema directly
+      # from schema.prisma, which is the correct tool for an ephemeral
+      # test database (as opposed to `migrate deploy`, which is for a
+      # real deployment with a real migration history).
+      - run: npx prisma generate
+      - run: npx prisma db push
+
+      - run: npm test
