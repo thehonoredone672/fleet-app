@@ -19,7 +19,13 @@ const send = async ({ to, subject, text, html }) => {
   const info = await transporter.sendMail({ from: env.smtp.from, to, subject, text, html });
 
   if (!env.smtp.host) {
-    logger.info('Email not sent (SMTP not configured) — logging instead', { to, subject });
+    // This branch only runs when SMTP_HOST is unset — i.e. never against a
+    // real mailbox, only local dev/CI where jsonTransport stands in for
+    // delivery. Printing the body here (temp passwords, reset links) is
+    // the fallback's whole purpose, not an exception to "never log
+    // secrets" (logger.js) — without it, e.g. a driver's server-generated
+    // temp password would be generated, "sent", and then unrecoverable.
+    logger.warn(`Email not sent (SMTP not configured) — printing instead: "${subject}" to ${to}\n${text}`);
   }
 
   return info;
